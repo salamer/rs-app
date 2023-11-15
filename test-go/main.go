@@ -61,9 +61,10 @@ func makeRandomString(size int) string {
 func main() {
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
-	r.GET("/ping", func(c *gin.Context) {
+	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK,
-			makeRandomString(10000),
+			// makeRandomString(10000),
+			"Hello World",
 		)
 	})
 

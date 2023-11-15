@@ -58,20 +58,35 @@
 
 use bytes::BytesMut;
 use http::{Request, Response};
+use hyper::{body::HttpBody as _, Client};
 use std::convert::Infallible;
+use std::io::stdout;
+use tokio::io::{self, AsyncWriteExt as _};
 use tower::{service_fn, Service, ServiceBuilder, ServiceExt};
 use tower_http::{compression::Compression, decompression::DecompressionLayer, BoxError};
-use std::io::stdout;
-use hyper::{body::HttpBody as _, Client};
-use tokio::io::{self, AsyncWriteExt as _};
+use http::{
+    header::{HeaderName, HeaderValue},
+    Method, StatusCode,
+};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-
 
 async fn fetch_url(url: hyper::Uri) -> Result<()> {
     let client = Client::new();
 
-    let mut res = client.get(url).await?;
+    let mut builder = hyper::Request::builder().uri(url.to_string());
+
+    let req_headers = builder.headers_mut().unwrap();
+
+    req_headers.insert("accept-encoding", "gzip, deflate, br".parse().unwrap());
+
+    if let Some(headers) = builder.headers_mut() {
+        headers.insert("accept-encoding", "gzip, deflate, br".parse().unwrap());
+    }
+
+    let req = builder.body(hyper::Body::empty()).unwrap();
+
+    let mut res = client.request(req).await?;
 
     println!("Response: {}", res.status());
     println!("Headers: {:#?}\n", res.headers());
@@ -86,17 +101,14 @@ async fn fetch_url(url: hyper::Uri) -> Result<()> {
         data.push(chunk);
     }
 
-    println!("\n\nDone! {} bytes retrieved", data.len());
+    println!("\n\nDone! {:?} bytes retrieved", data);
 
     Ok(())
 }
 
-
 #[tokio::main]
 async fn main() -> Result<()> {
-    let url =  "http://localhost:8090/";
+    let url = "http://localhost:8090/";
 
-    fetch_url(
-       url.parse::<hyper::Uri>().unwrap()
-    ).await
+    fetch_url(url.parse::<hyper::Uri>().unwrap()).await
 }
